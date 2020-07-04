@@ -37,9 +37,13 @@ function sendDirSync(path, size) {
 // 发送按钮点击
 view.sendBtnOnClick(() => {
   let pathName = view.getPathName();
-  console.log(pathName);
   if (currentConn == null) {
     view.showMsg("错误", "请先建立连接！");
+    return;
+  }
+  // TODO 如果正在接收，则取消发送
+  if (currentConn.recvFileInfo) {
+    view.showMsg("错误", "请等待文件接收完成！");
     return;
   }
   if (!fs.existsSync(pathName)) {
@@ -47,7 +51,6 @@ view.sendBtnOnClick(() => {
     return;
   }
   let fileName = path.basename(pathName);
-  console.log(fileName);
   utils.sendFileInfo(currentConn, pathName, fileName, () => {
     view.showProcess("等待对方确认");
   });
@@ -90,8 +93,8 @@ view.startConnBtnOnClick(() => {
         view.getTargetHost(),
         () => {
           view.switchConnBtn(false);
+          console.log("连接成功");
         });
-    console.log(currentConn);
     // 错误处理
     currentConn.on("error", (err) => {
       console.error(err);
@@ -99,45 +102,11 @@ view.startConnBtnOnClick(() => {
     });
     // 数据接收处理
     currentConn.on("data", function (data) {
-      // console.log(data);
-      if (data.length === 1) {
-        let msg = data.toString();
-        if (msg === "0") {
-          // 对方已取消
-          console.log("对方已取消");
-          view.hideProcess();
-          view.showMsg("提示", "对方已取消");
-        } else if (msg === "2") {
-          // 对方已中断
-          utils.cancelTransferFile(currentConn);
-          view.cancelProgress();
-        } else if (msg === "1") {
-          // TODO 如果正在发送，则取消响应
-          // 对方已确认
-          console.log("对方已确认");
-          view.hideProcess();
-          utils.sendFileData(currentConn, (readStream, filePath, fileSize) => {
-            let fileName = path.basename(filePath);
-            view.initProgress(filePath, fileName, utils.convertBytes(fileSize),
-                () => {
-                  // TODO 使用工具来解析命令，枚举、常量、以及配套的解析方法
-                  currentConn.write("2");
-                  utils.cancelTransferFile(currentConn);
-                  view.cancelProgress();
-                });
-          }, (hadSend, fileSize) => {
-            view.updateProgress(hadSend / fileSize);
-          }, () => {
-            view.doneProgress();
-          });
-        }
-      } else {
-
-      }
+      processData(currentConn, data);
     });
     // 关闭客户端连接
     currentConn.on("close", function (data) {
-      console.log("close: " + data);
+      console.log("连接断开: " + data);
       view.switchConnBtn(true);
       currentConn = null;
     });
@@ -156,7 +125,7 @@ function startServer(host, port) {
     view.showMsg("错误", err.message);
   });
   tcp_server.listen(port, host, () => {
-    console.log("Server listening on " + host + ":" + port);
+    console.log("服务端启动：" + host + ":" + port);
     view.switchServerBtn(false);
   });
   tcp_server.on("close", () => {
@@ -169,68 +138,131 @@ function startServer(host, port) {
 function accept(client) {
   // 客户端接入
   currentConn = client;
-  console.log(client);
-  console.log("Accept: " + client.remoteAddress + ": " + client.remotePort);
+  console.log("客户端接入: " + client.remoteAddress + ": " + client.remotePort);
 
   client.on("data", (data) => {
     processData(client, data);
   });
   // TCP 的半关闭状态可能会有数据
   client.on("close", (data) => {
-    console.log("Closed: " + client.remoteAddress + ": " + client.remotePort);
+    console.log("客户端断开: " + client.remoteAddress + ": " + client.remotePort);
   });
 }
 
 function processData(socket, data) {
   try {
     if (data.length === 1) {
-      let msg = data.toString();
-      if (msg === "2") {
-        // 对方已中断
-        utils.cancelReceiveFile(currentConn);
-        view.cancelProgress();
-      }
+      processCommand(socket, data);
       return;
     }
-    // 将文件信息绑定到当前socket，便于后续访问
-    if (!socket.fileInfo) {
-      let fileInfo = JSON.parse(data).fileInfo;
-      view.showFileReceiveDialog(dialog, fileInfo, (pathName) => {
-        if (!pathName) {
-          socket.write("0");
-          return;
-        }
-        socket.fileInfo = fileInfo;
-        // 已经接收的大小
-        socket.hasSend = 0;
-        // 文件标识ID
-        socket.fd = fs.openSync(pathName, "w+");
-        // 反馈
-        socket.write("1");
-        let fileName = path.basename(pathName);
-        view.initProgress(pathName, fileName,
-            utils.convertBytes(fileInfo.fileSize), () => {
-              currentConn.write("2");
-              utils.cancelReceiveFile(currentConn);
-              view.cancelProgress();
-            });
-      });
-    } else {
-      socket.hasSend = socket.hasSend + data.length;
-      fs.appendFileSync(socket.fd, data);
-      // console.log(
-      //     (socket.hasSend / socket.fileInfo.fileSize * 100).toFixed(2) + "%");
-      view.updateProgress(socket.hasSend / socket.fileInfo.fileSize);
-      if (socket.hasSend >= socket.fileInfo.fileSize) {
-        fs.closeSync(socket.fd);
-        console.log("file transfer completed");
-        // socket.write("file transfer completed");
-        socket.fileInfo = null;
-        socket.fd = null;
-        view.doneProgress();
-      }
-    }
+    processFileRecv(socket, data);
   } catch (e) {
+    // 处理数据时如果出错，不结束进程
     console.error(e);
+  }
+}
+
+function processFileRecv(socket, data) {
+  // 将文件信息绑定到当前socket，便于后续访问
+  if (!socket.recvFileInfo) {
+    let fileInfo = JSON.parse(data).fileInfo;
+    view.showFileReceiveDialog(dialog, fileInfo, (pathName) => {
+      if (!pathName) {
+        console.log("取消文件接收");
+        socket.write("0");
+        return;
+      }
+      console.log("接收文件：", pathName);
+      let recvFileInfo = {
+        filePath: null,
+        fileName: null,
+        fileSize: null,
+        hasRecv: null,
+        fd: null
+      };
+      socket.recvFileInfo = recvFileInfo;
+      let fileName = path.basename(pathName);
+      recvFileInfo.filePath = pathName;
+      recvFileInfo.fileName = fileName;
+      recvFileInfo.fileSize = fileInfo.fileSize;
+      // 已经接收的大小
+      recvFileInfo.hasRecv = 0;
+      // 文件标识ID
+      recvFileInfo.fd = fs.openSync(recvFileInfo.filePath, "w+");
+      // 反馈
+      socket.write("1");
+      view.initProgress(pathName, fileName,
+          utils.convertBytes(recvFileInfo.fileSize), '接收', () => {
+            // 接收方主动取消，要先等发送方结束发送
+            currentConn.write("2");
+          });
+    });
+  } else {
+    let recvFileInfo = socket.recvFileInfo;
+    recvFileInfo.hasRecv = recvFileInfo.hasRecv + data.length;
+    fs.appendFileSync(recvFileInfo.fd, data);
+    view.updateProgress(recvFileInfo.hasRecv / recvFileInfo.fileSize);
+    if (recvFileInfo.hasRecv >= recvFileInfo.fileSize) {
+      // 文件接收完成
+      console.log("文件接收完成");
+      utils.closeReceiveFile(socket);
+      view.doneProgress();
+    }
+  }
+}
+
+function processCommand(socket, data) {
+  let msg = data.toString();
+  if (msg === "0") {
+    // TODO 如果发送方取消
+    // 对方已取消
+    console.log("取消文件发送");
+    view.hideProcess();
+    view.showMsg("提示", "对方已取消");
+    utils.closeTransferFile(socket);
+    return;
+  }
+  if (msg === "2") {
+    try {
+      // 对方已中断
+      console.log("中断文件发送");
+      if (socket.sendFileInfo) {
+        // 如果是发送方，需要响应
+        utils.closeTransferFile(socket);
+        socket.write("2");
+      } else if (socket.recvFileInfo) {
+        // 如果是接收方
+        utils.closeReceiveFile(socket);
+      } else {
+        return;
+      }
+      view.cancelProgress();
+    } catch (e) {
+      console.error(e);
+    }
+    return;
+  }
+  if (msg === "1") {
+    // 对方已确认
+    view.hideProcess();
+    utils.sendFileData(socket, (readStream, filePath, fileSize) => {
+      let fileName = path.basename(filePath);
+      view.initProgress(filePath, fileName, utils.convertBytes(fileSize), '发送',
+          () => {
+            // 发送方主动取消，同时接收方，不需要响应，直接销毁
+            console.log("中断文件发送");
+            currentConn.write("2");
+            utils.closeTransferFile(socket);
+            view.cancelProgress();
+          });
+    }, (hadSend, fileSize) => {
+      // 更新进度条
+      view.updateProgress(hadSend / fileSize);
+    }, () => {
+      // 完成进度条
+      console.log("文件发送完成");
+      view.doneProgress();
+      utils.closeTransferFile(socket);
+    });
   }
 }

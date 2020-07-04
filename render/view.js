@@ -73,10 +73,14 @@ function switchServerBtn(start) {
     getSocketInfo().startServerBtn.removeClass("btn-danger");
     getSocketInfo().startServerBtn.addClass("btn-outline-primary");
     getSocketInfo().startServerBtn.text("启动");
+    //
+    getSocketInfo().startConnBtn.prop('disabled', false);
   } else {
     getSocketInfo().startServerBtn.removeClass("btn-outline-primary");
     getSocketInfo().startServerBtn.addClass("btn-danger");
     getSocketInfo().startServerBtn.text("关闭");
+    // 关闭另外一个按钮
+    getSocketInfo().startConnBtn.prop('disabled', true);
   }
 }
 function switchConnBtn(start) {
@@ -84,10 +88,14 @@ function switchConnBtn(start) {
     getSocketInfo().startConnBtn.removeClass("btn-danger");
     getSocketInfo().startConnBtn.addClass("btn-outline-primary");
     getSocketInfo().startConnBtn.text("连接");
+    //
+    getSocketInfo().startServerBtn.prop('disabled', false);
   } else {
     getSocketInfo().startConnBtn.removeClass("btn-outline-primary");
     getSocketInfo().startConnBtn.addClass("btn-danger");
     getSocketInfo().startConnBtn.text("断开");
+    // 关闭另外一个按钮
+    getSocketInfo().startServerBtn.prop('disabled', true);
   }
 }
 function startServerBtnOnClick(callback) {
@@ -170,6 +178,7 @@ let progress = {
   progress: null,
   progressFileName: null,
   progressFileSize: null,
+  status: null,
   progressBar: null,
   cancelTransfer: null
 };
@@ -178,13 +187,15 @@ function getProgress() {
     progress.progress = $("#progress");
     progress.progressFileName = $("#progress #fileName");
     progress.progressFileSize = $("#progress #fileSize");
+    progress.status = $("#progress #status");
     progress.progressBar = $("#progress .progress-bar");
     progress.cancelTransfer = $("#progress .close");
     progress.init = true;
   }
   return progress;
 }
-function initProgress(pathName, fileName, fileSize, cancelCallback) {
+function initProgress(pathName, fileName, fileSize, status, cancelCallback) {
+  getProgress().status.text(status);
   getProgress().progressFileName.attr("title", pathName);
   getProgress().progressFileName.text(fileName);
   getProgress().progressFileSize.text(fileSize);
