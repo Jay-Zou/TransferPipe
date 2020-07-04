@@ -227,6 +227,7 @@ function updateProgress(value) {
   getProgress().progressBar.text(percent);
 }
 function doneProgress() {
+  getProgress().cancelTransfer.hide();
   getProgress().progressBar.removeClass("progress-bar-striped");
 }
 //------------------------------------------------------------------------------
