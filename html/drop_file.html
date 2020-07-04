@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+        integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+        crossorigin="anonymous">
+  <style>
+    /* 去除按钮点击后的阴影 */
+    .btn:focus {
+      box-shadow: none;
+    }
+  </style>
+  <script>require('jquery');</script>
+  <script>require('popper.js');</script>
+  <script>require('bootstrap');</script>
+
+  <title>Document</title>
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <div class="input-group col-sm-4">
+      <div class="input-group-prepend">
+        <span class="input-group-text">本地IP</span>
+      </div>
+      <input type="text" id="local_addr" class="form-control" value="127.0.0.1">
+    </div>
+    <div class="input-group col-sm-3">
+      <div class="input-group-prepend">
+        <span class="input-group-text">端口</span>
+      </div>
+      <input type="text" id="local_port" class="form-control" value="1091">
+    </div>
+    <div class="input-group col-sm-2">
+      <button class="btn btn-outline-primary" type="button" id="start_server_btn">启动</button>
+    </div>
+  </div>
+  <div class="row mt-1">
+    <div class="input-group col-sm-4">
+      <div class="input-group-prepend">
+        <span class="input-group-text">目标IP</span>
+      </div>
+      <input type="text" id="target_addr" class="form-control" value="127.0.0.1">
+    </div>
+    <div class="input-group col-sm-3">
+      <div class="input-group-prepend">
+        <span class="input-group-text">端口</span>
+      </div>
+      <input type="text" id="target_port" class="form-control" value="1091">
+    </div>
+    <div class="input-group col-sm-2">
+      <button class="btn btn-outline-primary" type="button" id="start_conn_btn">连接</button>
+    </div>
+  </div>
+  <div class="row mt-3">
+    <div class="input-group col-sm-10" id="drop_area">
+      <input type="text" class="form-control" placeholder="拖拽文件或目录" id="file_input_text"/>
+      <div class="input-group-append">
+        <button class="btn btn-outline-primary" type="button" id="file_input_btn">发送</button>
+      </div>
+    </div>
+  </div>
+  <!-- 进度条 -->
+  <div class="row mt-3" id="progress" style="display: none">
+    <div class="col-sm-10 ml-3 p-3 border rounded">
+      <div class="clearfix">
+        <h6 class="float-left">
+          <span id="fileName" title="C:\test.txt">test.txt</span>
+          <span id="fileSize" class="border-bottom badge badge-pill badge-light">4 GB</span>
+        </h6>
+        <button type="button" class="close float-right" title="取消">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="progress">
+        <div class="progress-bar progress-bar-striped" role="progressbar"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 错误信息模态框（Modal） -->
+<div class="modal fade" id="wrongMsgModel" tabindex="-1" role="dialog"
+     aria-labelledby="myModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">错误</h4>
+      </div>
+      <div class="modal-body">错误信息</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 文件保存模态框（Modal） -->
+<div class="modal fade" id="saveFileModal" data-backdrop="static" data-keyboard="false"
+     tabindex="-1" role="dialog" aria-labelledby="myModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title">是否接收文件</h4>
+      </div>
+      <div class="modal-body">xxx文件</div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">是</button>
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">否</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 处理中模态框（Modal），失去焦点不会自动关闭 -->
+<div class="modal fade" id="processing" data-backdrop="static" data-keyboard="false" tabindex="-1"
+     role="dialog" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body">处理中</div>
+    </div>
+  </div>
+</div>
+<div id="test"></div>
+<script src="../render/drop_file.js"></script>
+<script src="../render/tabs.js"></script>
+<script>
+  $("#test").loading();
+  $("#test").loading("setLoadingText","系统错误，请与管理员联系");
+</script>
+</body>
+</html>
