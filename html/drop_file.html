@@ -117,22 +117,21 @@
     </div>
   </div>
 </div>
-
 <!-- 处理中模态框（Modal），失去焦点不会自动关闭 -->
 <div class="modal fade" id="processing" data-backdrop="static" data-keyboard="false" tabindex="-1"
      role="dialog" aria-labelledby="staticBackdropLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-body">处理中</div>
+      <div class="modal-body">
+        <!-- 中间对齐 justify-content-center，文字水平居中 align-items-center -->
+        <div class="d-flex align-items-center">
+          <span class="spinner-border text-primary" role="status"></span>
+          <span id="processing-msg" class="ml-2">等待中...</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
-<div id="test"></div>
 <script src="../render/drop_file.js"></script>
-<script src="../render/tabs.js"></script>
-<script>
-  $("#test").loading();
-  $("#test").loading("setLoadingText","系统错误，请与管理员联系");
-</script>
 </body>
 </html>

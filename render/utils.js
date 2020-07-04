@@ -74,7 +74,7 @@ function cancelTransferFile(socket) {
   socket.readStream.close(); // 这可能不会关闭流。
   // 手动标记流的结束，就像底层的资源自身已表明文件的结束一样，使得流可以关闭。
   // 这不会取消待处理的读取操作，如果存在此类操作，则进程可能仍无法成功地退出，直到完成。
-  socket.readStream.push(null);
+  // socket.readStream.push(null);
   socket.readStream.read(0);
 
   socket.filePath = null;
